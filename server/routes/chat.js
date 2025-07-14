@@ -7,12 +7,328 @@ const router = express.Router();
 // Simple in-memory chat history
 const chatHistory = [];
 
+// Tool Functions - These will interact with your database
+const toolFunctions = {
+    async createAppointment(args, req) {
+        try {
+            const appointmentData = {
+                patientName: args.patientName,
+                doctorName: args.doctorName,
+                date: args.date,
+                time: args.time,
+                type: args.type || 'consultation',
+                notes: args.notes || '',
+                status: 'scheduled'
+            };
+            
+            const newAppointment = { ...appointmentData, id: Date.now() };
+            req.db.data.appointments.push(newAppointment);
+            await req.db.write();
+            
+            return {
+                success: true,
+                data: newAppointment,
+                message: `Appointment created successfully for ${args.patientName} with ${args.doctorName} on ${args.date} at ${args.time}`
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message,
+                message: 'Failed to create appointment'
+            };
+        }
+    },
+
+    async createPrescription(args, req) {
+        try {
+            const prescriptionData = {
+                patientName: args.patientName,
+                doctorName: args.doctorName,
+                medications: args.medications, // Array of medication objects
+                dosage: args.dosage,
+                duration: args.duration,
+                instructions: args.instructions || '',
+                date: args.date || new Date().toISOString().split('T')[0],
+                status: 'active'
+            };
+            
+            const newPrescription = { ...prescriptionData, id: Date.now() };
+            req.db.data.prescriptions.push(newPrescription);
+            await req.db.write();
+            
+            return {
+                success: true,
+                data: newPrescription,
+                message: `Prescription created successfully for ${args.patientName}`
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message,
+                message: 'Failed to create prescription'
+            };
+        }
+    },
+
+    async createFitnessPlan(args, req) {
+        try {
+            const fitnessData = {
+                patientName: args.patientName,
+                planType: args.planType || 'general',
+                duration: args.duration, // in weeks
+                goals: args.goals || [],
+                exercises: args.exercises || [],
+                frequency: args.frequency || 'daily',
+                difficulty: args.difficulty || 'moderate',
+                instructions: args.instructions || '',
+                createdDate: new Date().toISOString().split('T')[0],
+                status: 'active'
+            };
+            
+            const newFitnessPlan = { ...fitnessData, id: Date.now() };
+            req.db.data.fitness_plans.push(newFitnessPlan);
+            await req.db.write();
+            
+            return {
+                success: true,
+                data: newFitnessPlan,
+                message: `Fitness plan created successfully for ${args.patientName}`
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message,
+                message: 'Failed to create fitness plan'
+            };
+        }
+    },
+
+    async createMealPlan(args, req) {
+        try {
+            const mealData = {
+                patientName: args.patientName,
+                planType: args.planType || 'balanced',
+                duration: args.duration, // in days
+                dietaryRestrictions: args.dietaryRestrictions || [],
+                meals: args.meals || [],
+                calories: args.calories || 2000,
+                goals: args.goals || [],
+                instructions: args.instructions || '',
+                createdDate: new Date().toISOString().split('T')[0],
+                status: 'active'
+            };
+            
+            const newMealPlan = { ...mealData, id: Date.now() };
+            req.db.data.meal_plans.push(newMealPlan);
+            await req.db.write();
+            
+            return {
+                success: true,
+                data: newMealPlan,
+                message: `Meal plan created successfully for ${args.patientName}`
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message,
+                message: 'Failed to create meal plan'
+            };
+        }
+    }
+};
+
+// OpenAI Function Definitions
+const tools = [
+    {
+        type: "function",
+        function: {
+            name: "createAppointment",
+            description: "Create a new appointment for a patient",
+            parameters: {
+                type: "object",
+                properties: {
+                    patientName: {
+                        type: "string",
+                        description: "Name of the patient"
+                    },
+                    doctorName: {
+                        type: "string",
+                        description: "Name of the doctor"
+                    },
+                    date: {
+                        type: "string",
+                        description: "Date of appointment (YYYY-MM-DD format)"
+                    },
+                    time: {
+                        type: "string",
+                        description: "Time of appointment (HH:MM format)"
+                    },
+                    type: {
+                        type: "string",
+                        description: "Type of appointment (consultation, checkup, follow-up, etc.)"
+                    },
+                    notes: {
+                        type: "string",
+                        description: "Additional notes for the appointment"
+                    }
+                },
+                required: ["patientName", "doctorName", "date", "time"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "createPrescription",
+            description: "Create a new prescription for a patient",
+            parameters: {
+                type: "object",
+                properties: {
+                    patientName: {
+                        type: "string",
+                        description: "Name of the patient"
+                    },
+                    doctorName: {
+                        type: "string",
+                        description: "Name of the prescribing doctor"
+                    },
+                    medications: {
+                        type: "array",
+                        description: "List of medications",
+                        items: {
+                            type: "string"
+                        }
+                    },
+                    dosage: {
+                        type: "string",
+                        description: "Dosage instructions"
+                    },
+                    duration: {
+                        type: "string",
+                        description: "Duration of treatment"
+                    },
+                    instructions: {
+                        type: "string",
+                        description: "Additional instructions for the patient"
+                    }
+                },
+                required: ["patientName", "doctorName", "medications", "dosage", "duration"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "createFitnessPlan",
+            description: "Create a new fitness plan for a patient",
+            parameters: {
+                type: "object",
+                properties: {
+                    patientName: {
+                        type: "string",
+                        description: "Name of the patient"
+                    },
+                    planType: {
+                        type: "string",
+                        description: "Type of fitness plan (weight-loss, muscle-building, cardio, etc.)"
+                    },
+                    duration: {
+                        type: "number",
+                        description: "Duration of the plan in weeks"
+                    },
+                    goals: {
+                        type: "array",
+                        description: "Fitness goals",
+                        items: {
+                            type: "string"
+                        }
+                    },
+                    exercises: {
+                        type: "array",
+                        description: "List of exercises",
+                        items: {
+                            type: "string"
+                        }
+                    },
+                    frequency: {
+                        type: "string",
+                        description: "Frequency of exercise (daily, 3x per week, etc.)"
+                    },
+                    difficulty: {
+                        type: "string",
+                        description: "Difficulty level (beginner, moderate, advanced)"
+                    },
+                    instructions: {
+                        type: "string",
+                        description: "Additional instructions"
+                    }
+                },
+                required: ["patientName", "duration", "goals"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "createMealPlan",
+            description: "Create a new meal plan for a patient",
+            parameters: {
+                type: "object",
+                properties: {
+                    patientName: {
+                        type: "string",
+                        description: "Name of the patient"
+                    },
+                    planType: {
+                        type: "string",
+                        description: "Type of meal plan (weight-loss, diabetic, heart-healthy, etc.)"
+                    },
+                    duration: {
+                        type: "number",
+                        description: "Duration of the plan in days"
+                    },
+                    dietaryRestrictions: {
+                        type: "array",
+                        description: "Dietary restrictions or allergies",
+                        items: {
+                            type: "string"
+                        }
+                    },
+                    meals: {
+                        type: "array",
+                        description: "List of meals",
+                        items: {
+                            type: "string"
+                        }
+                    },
+                    calories: {
+                        type: "number",
+                        description: "Daily calorie target"
+                    },
+                    goals: {
+                        type: "array",
+                        description: "Nutritional goals",
+                        items: {
+                            type: "string"
+                        }
+                    },
+                    instructions: {
+                        type: "string",
+                        description: "Additional instructions"
+                    }
+                },
+                required: ["patientName", "duration", "goals"]
+            }
+        }
+    }
+];
+
 /**
  * @swagger
  * /api/chat:
  *   post:
- *     summary: Exchange messages with the AI chat agent
- *     description: Sends a message to the chat agent and receives a response.
+ *     summary: Exchange messages with the AI chat agent with tool support
+ *     description: Sends a message to the chat agent and receives a response. Can execute tools like creating appointments, prescriptions, fitness plans, and meal plans.
  *     requestBody:
  *       required: true
  *       content:
@@ -34,6 +350,9 @@ const chatHistory = [];
  *                 response:
  *                   type: string
  *                   description: The AI's reply.
+ *                 toolsExecuted:
+ *                   type: array
+ *                   description: List of tools that were executed.
  */
 router.post('/', async (req, res) => {
     const userMessage = req.body.message;
@@ -55,7 +374,10 @@ router.post('/', async (req, res) => {
 
         // Convert chat history to OpenAI format
         const messages = [
-            { role: 'system', content: 'You are a helpful assistant.' },
+            { 
+                role: 'system', 
+                content: 'You are a helpful medical assistant. You can help create appointments, prescriptions, fitness plans, and meal plans for patients. Always ask for required information before creating any plans.' 
+            },
             ...chatHistory.map(entry => [
                 { role: 'user', content: entry.user },
                 { role: 'assistant', content: entry.ai }
@@ -66,20 +388,85 @@ router.post('/', async (req, res) => {
         console.log("Messages being sent:", JSON.stringify(messages, null, 2));
 
         const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo', // or 'gpt-4', 'gpt-4-turbo', etc.
+            model: 'gpt-4', // Using GPT-4 for better tool usage
             messages: messages,
-            max_tokens: 150,
+            tools: tools,
+            tool_choice: "auto", // Let the model decide when to use tools
+            max_tokens: 500,
             temperature: 0.7,
         });
 
-        const aiResponse = completion.choices[0].message.content;
+        const responseMessage = completion.choices[0].message;
+        const toolsExecuted = [];
 
-        console.log("AI Response:", aiResponse);
+        // Check if the model wants to call any tools
+        if (responseMessage.tool_calls) {
+            console.log("Tools called:", responseMessage.tool_calls);
 
-        // Store in history
-        chatHistory.push({ user: userMessage, ai: aiResponse });
+            // Execute each tool call
+            for (const toolCall of responseMessage.tool_calls) {
+                const functionName = toolCall.function.name;
+                const functionArgs = JSON.parse(toolCall.function.arguments);
 
-        res.json({ response: aiResponse });
+                console.log(`Executing tool: ${functionName} with args:`, functionArgs);
+
+                if (toolFunctions[functionName]) {
+                    const result = await toolFunctions[functionName](functionArgs, req);
+                    toolsExecuted.push({
+                        tool: functionName,
+                        args: functionArgs,
+                        result: result
+                    });
+
+                    // Add the tool result to the conversation
+                    messages.push({
+                        role: 'assistant',
+                        content: responseMessage.content || '',
+                        tool_calls: responseMessage.tool_calls
+                    });
+                    
+                    messages.push({
+                        role: 'tool',
+                        tool_call_id: toolCall.id,
+                        content: JSON.stringify(result)
+                    });
+                } else {
+                    console.error(`Unknown tool function: ${functionName}`);
+                }
+            }
+
+            // Get the final response after tool execution
+            const finalCompletion = await openai.chat.completions.create({
+                model: 'gpt-4',
+                messages: messages,
+                max_tokens: 300,
+                temperature: 0.7,
+            });
+
+            const finalResponse = finalCompletion.choices[0].message.content;
+            console.log("Final AI Response:", finalResponse);
+
+            // Store in history
+            chatHistory.push({ user: userMessage, ai: finalResponse });
+
+            res.json({ 
+                response: finalResponse,
+                toolsExecuted: toolsExecuted
+            });
+
+        } else {
+            // No tools called, regular response
+            const aiResponse = responseMessage.content;
+            console.log("AI Response:", aiResponse);
+
+            // Store in history
+            chatHistory.push({ user: userMessage, ai: aiResponse });
+
+            res.json({ 
+                response: aiResponse,
+                toolsExecuted: []
+            });
+        }
         
     } catch (error) {
         console.error('OpenAI API Error:', error);
