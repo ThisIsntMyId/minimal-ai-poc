@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -8,6 +7,9 @@ import appointmentsRouter from './routes/appointments.js';
 import prescriptionsRouter from './routes/prescriptions.js';
 import fitnessPlansRouter from './routes/fitness_plans.js';
 import mealPlansRouter from './routes/meal_plans.js';
+import chatRouter from './routes/chat.js';
+import { config } from './config.js';
+
 
 const app = express();
 app.use(express.json());
@@ -36,8 +38,9 @@ app.use('/api/appointments', appointmentsRouter);
 app.use('/api/prescriptions', prescriptionsRouter);
 app.use('/api/fitness_plans', fitnessPlansRouter);
 app.use('/api/meal_plans', mealPlansRouter);
+app.use('/api/chat', chatRouter);
 
-const port = process.env.PORT || 3000;
+const port = config.port;
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

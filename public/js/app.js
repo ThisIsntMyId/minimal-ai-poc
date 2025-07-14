@@ -198,14 +198,40 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================
     navTabs.forEach(tab => tab.addEventListener('click', () => navigateTo(tab.dataset.tab)));
     
-    chatForm.addEventListener('submit', (e) => {
+    chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const userInput = chatInput.value.trim();
         if (!userInput) return;
+
         appState.messages.push({ role: 'user', content: userInput });
         renderChat();
         chatInput.value = '';
-        setTimeout(() => getMockBotResponse(userInput), 1000);
+
+        // Add a temporary "bot is typing" message
+        const typingEl = document.createElement('div');
+        typingEl.className = 'bg-gray-700 self-start rounded-b-xl rounded-tr-xl p-3 max-w-[80%]';
+        typingEl.textContent = '...';
+        chatWindow.appendChild(typingEl);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+
+        try {
+            const data = await api.post('chat', { message: userInput });
+            // Remove "typing" indicator
+            typingEl.remove();
+            
+            const botResponse = data.response;
+            appState.messages.push({ role: 'bot', content: botResponse });
+            renderChat();
+        } catch (error) {
+            // Remove "typing" indicator
+            typingEl.remove();
+            console.error('Error getting AI response:', error);
+            const errorEl = document.createElement('div');
+            errorEl.className = 'bg-red-500 text-white self-start rounded-b-xl rounded-tr-xl p-3 max-w-[80%]';
+            errorEl.textContent = 'Sorry, I had trouble connecting. Please try again.';
+            chatWindow.appendChild(errorEl);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
     });
     
     addNewBtn.addEventListener('click', renderFormScreen);
@@ -244,32 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ===================================================================
-    // MOCK AI LOGIC
-    // ===================================================================
-    function getMockBotResponse(input) {
-        const lowerInput = input.toLowerCase();
-        let botResponse = "I'm not sure how to help with that. Try asking me to see your 'appointments' or 'prescriptions'.";
-
-        if (lowerInput.includes('hello') || lowerInput.includes('hi')) {
-            botResponse = "Hi there! What can I do for you?";
-        } else if (lowerInput.includes('appointment')) {
-            botResponse = "Sure, I can help with appointments. I'm taking you to that screen now.";
-            navigateTo('appointments');
-        } else if (lowerInput.includes('prescription')) {
-             botResponse = "Okay, navigating to your prescriptions.";
-            navigateTo('prescriptions');
-        } else if (lowerInput.includes('fitness') || lowerInput.includes('workout')) {
-            botResponse = "Showing your fitness plans now.";
-            navigateTo('fitness_plans');
-        } else if (lowerInput.includes('meal') || lowerInput.includes('food')) {
-            botResponse = "Here are your meal plans.";
-            navigateTo('meal_plans');
-        }
-
-        appState.messages.push({ role: 'bot', content: botResponse });
-        renderChat();
-    }
+    
 
     // --- INITIALIZE APP ---
     navigateTo('chat'); // Start on the chat screen
