@@ -1,0 +1,4 @@
+.gemini
+server/node_modules
+server/db.json
+server/.env
