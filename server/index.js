@@ -16,10 +16,12 @@ app.use(express.json());
 app.use(cors());
 
 // Get the directory name of the current module
-const __dirname = path.dirname(new URL(import.meta.url).pathname.substring(1));
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
+console.log('Server directory:', __dirname);
 
 // Serve static files from the 'public' directory which is now at the root
 app.use(express.static(path.join(__dirname, '..', 'public')));
+console.log('Static files path:', path.join(__dirname, '..', 'public'));
 
 const db = await JSONFilePreset('db.json', {
     appointments: [],
@@ -39,6 +41,14 @@ app.use('/api/prescriptions', prescriptionsRouter);
 app.use('/api/fitness_plans', fitnessPlansRouter);
 app.use('/api/meal_plans', mealPlansRouter);
 app.use('/api/chat', chatRouter);
+
+app.get('/ping', (req, res) => {
+    return res.json({
+        status: 'ok',
+        message: 'pong',
+        timestamp: new Date().toISOString()
+    });
+});
 
 const port = config.port;
 
