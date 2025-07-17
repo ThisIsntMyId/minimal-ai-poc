@@ -36,15 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
         currentScreen: 'chat', // 'chat', 'list', 'form'
         currentTab: 'chat', // 'chat', 'appointments', 'prescriptions', etc.
         messages: [
-            { 
-                role: 'bot', 
-                content: "Hello! I am your AI assistant. How can I help you today?",
-                ragUsed: false,
-                citations: [],
-                toolsExecuted: []
-            }
+            { role: 'bot', content: "Hello! I am your AI assistant. How can I help you today?" }
         ],
-        ragStatus: { status: 'unknown' },
         // Schemas define the structure for each data type
         schemas: {
             appointments: {
@@ -97,7 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatWindow = document.getElementById('chat-window');
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-input');
-    const ragStatus = document.getElementById('rag-status');
     const listTitle = document.getElementById('list-title');
     const listContainer = document.getElementById('list-container');
     const addNewBtn = document.getElementById('add-new-btn');
@@ -105,103 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const formFieldsContainer = document.getElementById('form-fields-container');
     const dataForm = document.getElementById('data-form');
     const cancelFormBtn = document.getElementById('cancel-form-btn');
-
-    // ===================================================================
-    // UTILITY FUNCTIONS
-    // ===================================================================
-    
-    // Auto-resize textarea
-    function autoResizeTextarea(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-    }
-
-    // Format message content with proper line breaks
-    function formatMessageContent(content) {
-        return content
-            .replace(/\n/g, '<br>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>');
-    }
-
-    // Create typing indicator
-    function createTypingIndicator() {
-        const typingEl = document.createElement('div');
-        typingEl.className = 'bg-gray-700 self-start rounded-b-xl rounded-tr-xl p-3 max-w-[80%]';
-        typingEl.innerHTML = `
-            <div class="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        `;
-        return typingEl;
-    }
-
-    // Create message element
-    function createMessageElement(msg) {
-        const el = document.createElement('div');
-        
-        if (msg.role === 'bot') {
-            el.className = 'bg-gray-700 self-start rounded-b-xl rounded-tr-xl p-3 max-w-[80%]';
-            
-            let content = '';
-            
-            // Add RAG indicator
-            if (msg.ragUsed) {
-                content += '<div class="rag-indicator bg-blue-600 text-white">📚 Knowledge Base Used</div>';
-            }
-            
-            // Add tool indicators
-            if (msg.toolsExecuted && msg.toolsExecuted.length > 0) {
-                msg.toolsExecuted.forEach(tool => {
-                    content += `<div class="tool-indicator">🔧 ${tool.tool} executed</div>`;
-                });
-            }
-            
-            // Add main message content
-            content += `<div class="message-content">${formatMessageContent(msg.content)}</div>`;
-            
-            // Add citations if available
-            if (msg.citations && msg.citations.length > 0) {
-                content += '<div class="citations-list">';
-                content += '<div class="text-gray-400 text-xs mb-1">Sources:</div>';
-                msg.citations.forEach(citation => {
-                    content += `<span class="citation-badge bg-blue-800 text-blue-200">${citation.filename} (${citation.chunks} chunks)</span>`;
-                });
-                content += '</div>';
-            }
-            
-            el.innerHTML = content;
-        } else {
-            el.className = 'bg-blue-600 text-white self-end rounded-t-xl rounded-bl-xl p-3 max-w-[80%]';
-            el.innerHTML = `<div class="message-content">${formatMessageContent(msg.content)}</div>`;
-        }
-        
-        return el;
-    }
-
-    // Update RAG status display
-    async function updateRagStatus() {
-        try {
-            const status = await api.get('chat/rag-status');
-            appState.ragStatus = status;
-            
-            if (status.status === 'active') {
-                ragStatus.textContent = `📚 Knowledge Base: ${status.vectorCount || 0} documents`;
-                ragStatus.className = 'text-xs text-center text-green-400 mt-1';
-            } else if (status.status === 'disabled') {
-                ragStatus.textContent = '📚 Knowledge Base: Disabled';
-                ragStatus.className = 'text-xs text-center text-yellow-400 mt-1';
-            } else {
-                ragStatus.textContent = '📚 Knowledge Base: Error';
-                ragStatus.className = 'text-xs text-center text-red-400 mt-1';
-            }
-        } catch (error) {
-            ragStatus.textContent = '📚 Knowledge Base: Offline';
-            ragStatus.className = 'text-xs text-center text-gray-400 mt-1';
-        }
-    }
 
     // ===================================================================
     // NAVIGATION & SCREEN RENDERING
@@ -222,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (tabName === 'chat') {
             showScreen('chat-screen');
-            await updateRagStatus();
         } else {
             await renderListScreen();
             showScreen('list-screen');
@@ -232,8 +126,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderChat() {
         chatWindow.innerHTML = '';
         appState.messages.forEach(msg => {
-            const messageEl = createMessageElement(msg);
-            chatWindow.appendChild(messageEl);
+            const el = document.createElement('div');
+            el.textContent = msg.content;
+            if (msg.role === 'bot') {
+                el.className = 'bg-gray-700 self-start rounded-b-xl rounded-tr-xl p-3 max-w-[80%]';
+            } else {
+                el.className = 'bg-blue-600 text-white self-end rounded-t-xl rounded-bl-xl p-3 max-w-[80%]';
+            }
+            chatWindow.appendChild(el);
         });
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
@@ -296,89 +196,44 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================
     // EVENT LISTENERS
     // ===================================================================
-    
-    // Navigation
     navTabs.forEach(tab => tab.addEventListener('click', () => navigateTo(tab.dataset.tab)));
     
-    // Auto-resize chat input
-    chatInput.addEventListener('input', () => autoResizeTextarea(chatInput));
-    
-    // Handle Shift+Enter for new lines and Enter for submit
-    chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            if (e.shiftKey) {
-                // Shift+Enter: Allow new line (default behavior)
-                return;
-            } else {
-                // Enter: Submit form
-                e.preventDefault();
-                chatForm.dispatchEvent(new Event('submit'));
-            }
-        }
-    });
-    
-    // Chat form submission
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const userInput = chatInput.value.trim();
         if (!userInput) return;
 
-        // Add user message
-        appState.messages.push({ 
-            role: 'user', 
-            content: userInput,
-            ragUsed: false,
-            citations: [],
-            toolsExecuted: []
-        });
+        appState.messages.push({ role: 'user', content: userInput });
         renderChat();
-        
-        // Clear input and reset height
         chatInput.value = '';
-        autoResizeTextarea(chatInput);
 
-        // Add typing indicator
-        const typingEl = createTypingIndicator();
+        // Add a temporary "bot is typing" message
+        const typingEl = document.createElement('div');
+        typingEl.className = 'bg-gray-700 self-start rounded-b-xl rounded-tr-xl p-3 max-w-[80%]';
+        typingEl.textContent = '...';
         chatWindow.appendChild(typingEl);
         chatWindow.scrollTop = chatWindow.scrollHeight;
 
         try {
             const data = await api.post('chat', { message: userInput });
-            
-            // Remove typing indicator
+            // Remove "typing" indicator
             typingEl.remove();
             
-            // Add bot response with enhanced data
-            const botMessage = {
-                role: 'bot',
-                content: data.response,
-                ragUsed: data.ragUsed || false,
-                citations: data.citations || [],
-                toolsExecuted: data.toolsExecuted || []
-            };
-            
-            appState.messages.push(botMessage);
+            const botResponse = data.response;
+            appState.messages.push({ role: 'bot', content: botResponse });
             renderChat();
-            
         } catch (error) {
-            // Remove typing indicator
+            // Remove "typing" indicator
             typingEl.remove();
             console.error('Error getting AI response:', error);
-            
-            const errorMessage = {
-                role: 'bot',
-                content: 'Sorry, I had trouble connecting. Please try again.',
-                ragUsed: false,
-                citations: [],
-                toolsExecuted: []
-            };
-            
-            appState.messages.push(errorMessage);
-            renderChat();
+            const errorEl = document.createElement('div');
+            errorEl.className = 'bg-red-500 text-white self-start rounded-b-xl rounded-tr-xl p-3 max-w-[80%]';
+            errorEl.textContent = 'Sorry, I had trouble connecting. Please try again.';
+            chatWindow.appendChild(errorEl);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
         }
     });
     
-    // Form handling
     addNewBtn.addEventListener('click', renderFormScreen);
     cancelFormBtn.addEventListener('click', () => navigateTo(appState.currentTab));
     
@@ -399,7 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Delete functionality
     listContainer.addEventListener('click', async (e) => {
         if (e.target.classList.contains('delete-btn')) {
             const idToDelete = parseInt(e.target.dataset.id, 10);
@@ -416,11 +270,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ===================================================================
-    // INITIALIZATION
-    // ===================================================================
     
-    // Initialize app
+
+    // --- INITIALIZE APP ---
     navigateTo('chat'); // Start on the chat screen
     renderChat();
 });

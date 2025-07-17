@@ -1,6 +1,7 @@
 import express from 'express';
 import OpenAI from 'openai';
 import { config } from '../config.js';
+import { retrieveAndAugment, isFitnessRelated, getRAGStatus } from '../services/rag-service.js';
 
 const router = express.Router();
 
@@ -327,8 +328,8 @@ const tools = [
  * @swagger
  * /api/chat:
  *   post:
- *     summary: Exchange messages with the AI chat agent with tool support
- *     description: Sends a message to the chat agent and receives a response. Can execute tools like creating appointments, prescriptions, fitness plans, and meal plans.
+ *     summary: Exchange messages with the AI chat agent with RAG and tool support
+ *     description: Sends a message to the chat agent and receives a response. Uses RAG for fitness-related queries and can execute tools like creating appointments, prescriptions, fitness plans, and meal plans.
  *     requestBody:
  *       required: true
  *       content:
@@ -353,6 +354,12 @@ const tools = [
  *                 toolsExecuted:
  *                   type: array
  *                   description: List of tools that were executed.
+ *                 ragUsed:
+ *                   type: boolean
+ *                   description: Whether RAG was used for this response.
+ *                 citations:
+ *                   type: array
+ *                   description: Sources used from RAG.
  */
 router.post('/', async (req, res) => {
     const userMessage = req.body.message;
@@ -372,11 +379,35 @@ router.post('/', async (req, res) => {
             apiKey: apiKey,
         });
 
+        // Check if query is fitness-related and retrieve relevant context
+        let ragContext = null;
+        let citations = [];
+        let ragUsed = false;
+
+        if (isFitnessRelated(userMessage)) {
+            console.log('🏃‍♂️ Fitness-related query detected, using RAG...');
+            const ragResult = await retrieveAndAugment(userMessage);
+            
+            if (ragResult.context) {
+                ragContext = ragResult.context;
+                citations = ragResult.citations;
+                ragUsed = true;
+                console.log(`📚 RAG context retrieved: ${ragResult.chunks.length} chunks from ${citations.length} sources`);
+            }
+        }
+
+        // Create system prompt with or without RAG context
+        let systemPrompt = 'You are a helpful medical assistant. You can help create appointments, prescriptions, fitness plans, and meal plans for patients. Always ask for required information before creating any plans.';
+        
+        if (ragContext) {
+            systemPrompt += `\n\nYou have access to fitness and health knowledge from documents. Use the following context to provide accurate, evidence-based answers:\n\n${ragContext}\n\nWhen providing fitness or health advice, cite the relevant document sources when appropriate.`;
+        }
+
         // Convert chat history to OpenAI format
         const messages = [
             { 
                 role: 'system', 
-                content: 'You are a helpful medical assistant. You can help create appointments, prescriptions, fitness plans, and meal plans for patients. Always ask for required information before creating any plans.' 
+                content: systemPrompt
             },
             ...chatHistory.map(entry => [
                 { role: 'user', content: entry.user },
@@ -385,14 +416,14 @@ router.post('/', async (req, res) => {
             { role: 'user', content: userMessage }
         ];
 
-        console.log("Messages being sent:", JSON.stringify(messages, null, 2));
+        console.log("Messages being sent:", JSON.stringify(messages.slice(0, 2), null, 2)); // Log first 2 messages to avoid spam
 
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4', // Using GPT-4 for better tool usage
+            model: 'gpt-4', // Using GPT-4 for better tool usage and RAG understanding
             messages: messages,
             tools: tools,
             tool_choice: "auto", // Let the model decide when to use tools
-            max_tokens: 500,
+            max_tokens: 800, // Increased for RAG responses
             temperature: 0.7,
         });
 
@@ -439,7 +470,7 @@ router.post('/', async (req, res) => {
             const finalCompletion = await openai.chat.completions.create({
                 model: 'gpt-4',
                 messages: messages,
-                max_tokens: 300,
+                max_tokens: 400,
                 temperature: 0.7,
             });
 
@@ -451,7 +482,9 @@ router.post('/', async (req, res) => {
 
             res.json({ 
                 response: finalResponse,
-                toolsExecuted: toolsExecuted
+                toolsExecuted: toolsExecuted,
+                ragUsed: ragUsed,
+                citations: citations
             });
 
         } else {
@@ -464,7 +497,9 @@ router.post('/', async (req, res) => {
 
             res.json({ 
                 response: aiResponse,
-                toolsExecuted: []
+                toolsExecuted: [],
+                ragUsed: ragUsed,
+                citations: citations
             });
         }
         
@@ -487,6 +522,28 @@ router.post('/', async (req, res) => {
         res.status(500).json({ 
             error: 'Failed to get response from AI', 
             details: error.message 
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/chat/rag-status:
+ *   get:
+ *     summary: Get RAG service status
+ *     description: Returns the current status of the RAG service and vector database.
+ *     responses:
+ *       200:
+ *         description: RAG service status information.
+ */
+router.get('/rag-status', async (req, res) => {
+    try {
+        const status = await getRAGStatus();
+        res.json(status);
+    } catch (error) {
+        res.status(500).json({ 
+            status: 'error', 
+            reason: error.message 
         });
     }
 });
