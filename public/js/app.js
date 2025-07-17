@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const config = {
-        API_URL: 'http://localhost:3000/api'
+        API_URL: '/api'
     };
 
     // ===================================================================
