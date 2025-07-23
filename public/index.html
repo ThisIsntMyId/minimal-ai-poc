@@ -154,6 +154,39 @@
             transition: height 0.1s ease;
         }
         
+        /* Enhanced table styles */
+        .table-container {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .table-container table {
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+        }
+        
+        .table-container th {
+            background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.75rem;
+        }
+        
+        .table-container td {
+            vertical-align: top;
+            word-wrap: break-word;
+            max-width: 200px;
+        }
+        
+        .table-container tr:nth-child(even) {
+            background-color: rgba(55, 65, 81, 0.5);
+        }
+        
+        .table-container tr:hover {
+            background-color: rgba(75, 85, 99, 0.8);
+        }
+        
         /* Ensure all screens respect the layout */
         .screen {
             display: flex;

@@ -193,12 +193,94 @@ document.addEventListener('DOMContentLoaded', () => {
         textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
     }
 
-    // Format message content with proper line breaks
+    // Format message content with proper line breaks and tables
     function formatMessageContent(content) {
+        // First, handle table formatting
+        content = formatTables(content);
+        
+        // Then handle other markdown formatting
         return content
             .replace(/\n/g, '<br>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>');
+    }
+
+    // Format markdown tables to HTML tables with proper styling
+    function formatTables(content) {
+        // Split content into lines
+        const lines = content.split('\n');
+        const formattedLines = [];
+        let inTable = false;
+        let tableLines = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // Check if this line is part of a table (contains |)
+            if (line.includes('|') && line.trim().length > 0) {
+                if (!inTable) {
+                    inTable = true;
+                    tableLines = [];
+                }
+                tableLines.push(line);
+            } else {
+                // If we were in a table and now we're not, process the table
+                if (inTable) {
+                    formattedLines.push(processTable(tableLines));
+                    inTable = false;
+                    tableLines = [];
+                }
+                formattedLines.push(line);
+            }
+        }
+        
+        // Handle case where table is at the end
+        if (inTable && tableLines.length > 0) {
+            formattedLines.push(processTable(tableLines));
+        }
+        
+        return formattedLines.join('\n');
+    }
+
+    // Process table lines and convert to HTML
+    function processTable(tableLines) {
+        if (tableLines.length < 2) return tableLines.join('\n');
+        
+        let html = '<div class="table-container my-4 overflow-x-auto">';
+        html += '<table class="min-w-full border-collapse border border-gray-600 bg-gray-700 rounded-lg overflow-hidden">';
+        
+        for (let i = 0; i < tableLines.length; i++) {
+            const line = tableLines[i];
+            const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell.length > 0);
+            
+            // Skip separator lines (lines with only dashes and pipes)
+            if (line.match(/^[\s\-\|]+$/)) continue;
+            
+            if (i === 0) {
+                // Header row
+                html += '<thead class="bg-gray-600">';
+                html += '<tr>';
+                cells.forEach(cell => {
+                    html += `<th class="border border-gray-500 px-4 py-3 text-left text-sm font-semibold text-white">${cell}</th>`;
+                });
+                html += '</tr>';
+                html += '</thead>';
+                html += '<tbody>';
+            } else {
+                // Data row
+                html += '<tr class="hover:bg-gray-600 transition-colors">';
+                cells.forEach(cell => {
+                    html += `<td class="border border-gray-500 px-4 py-3 text-sm text-gray-200">${cell}</td>`;
+                });
+                html += '</tr>';
+            }
+        }
+        
+        html += '</tbody>';
+        html += '</table>';
+        html += '</div>';
+        
+        return html;
     }
 
     // Create typing indicator
