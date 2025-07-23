@@ -4,6 +4,76 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ===================================================================
+    // USER MANAGEMENT & LOCAL STORAGE
+    // ===================================================================
+    const userManager = {
+        // Local storage keys
+        STORAGE_KEYS: {
+            USER_DETAILS: 'fitness_ai_user_details',
+            ONBOARDING_RESPONSES: 'fitness_ai_onboarding_responses',
+            FITNESS_PLAN: 'fitness_ai_fitness_plan'
+        },
+
+        // Get user details from localStorage
+        getUserDetails() {
+            const stored = localStorage.getItem(this.STORAGE_KEYS.USER_DETAILS);
+            return stored ? JSON.parse(stored) : null;
+        },
+
+        // Save user details to localStorage
+        saveUserDetails(userDetails) {
+            localStorage.setItem(this.STORAGE_KEYS.USER_DETAILS, JSON.stringify(userDetails));
+        },
+
+        // Get onboarding responses from localStorage
+        getOnboardingResponses() {
+            const stored = localStorage.getItem(this.STORAGE_KEYS.ONBOARDING_RESPONSES);
+            return stored ? JSON.parse(stored) : null;
+        },
+
+        // Save onboarding responses to localStorage
+        saveOnboardingResponses(responses) {
+            localStorage.setItem(this.STORAGE_KEYS.ONBOARDING_RESPONSES, JSON.stringify(responses));
+        },
+
+        // Get fitness plan from localStorage
+        getFitnessPlan() {
+            const stored = localStorage.getItem(this.STORAGE_KEYS.FITNESS_PLAN);
+            return stored ? JSON.parse(stored) : null;
+        },
+
+        // Save fitness plan to localStorage
+        saveFitnessPlan(plan) {
+            localStorage.setItem(this.STORAGE_KEYS.FITNESS_PLAN, JSON.stringify(plan));
+        },
+
+        // Clear all user data (logout)
+        clearUserData() {
+            localStorage.removeItem(this.STORAGE_KEYS.USER_DETAILS);
+            localStorage.removeItem(this.STORAGE_KEYS.ONBOARDING_RESPONSES);
+            localStorage.removeItem(this.STORAGE_KEYS.FITNESS_PLAN);
+        },
+
+        // Check if user is logged in
+        isLoggedIn() {
+            return this.getUserDetails() !== null;
+        },
+
+        // Check if onboarding is completed
+        isOnboardingCompleted() {
+            return this.getOnboardingResponses() !== null;
+        },
+
+        // Get time-based greeting
+        getTimeBasedGreeting() {
+            const hour = new Date().getHours();
+            if (hour < 12) return 'morning';
+            if (hour < 17) return 'afternoon';
+            return 'evening';
+        }
+    };
+
+    // ===================================================================
     // API HELPER
     // ===================================================================
     const api = {
@@ -33,17 +103,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // APP STATE & DATABASE
     // ===================================================================
     const appState = {
-        currentScreen: 'chat', // 'chat', 'list', 'form'
+        currentScreen: 'login', // 'login', 'onboarding', 'chat', 'list', 'form'
         currentTab: 'chat', // 'chat', 'appointments', 'prescriptions', etc.
-        messages: [
-            { 
-                role: 'bot', 
-                content: "Hello! I am your AI assistant. How can I help you today?",
-                ragUsed: false,
-                citations: [],
-                toolsExecuted: []
-            }
-        ],
+        onboardingStep: 1,
+        totalOnboardingSteps: 6,
+        messages: [],
         ragStatus: { status: 'unknown' },
         // Schemas define the structure for each data type
         schemas: {
@@ -105,6 +169,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const formFieldsContainer = document.getElementById('form-fields-container');
     const dataForm = document.getElementById('data-form');
     const cancelFormBtn = document.getElementById('cancel-form-btn');
+    
+    // Login elements
+    const loginForm = document.getElementById('login-form');
+    const userInfo = document.getElementById('user-info');
+    const logoutBtn = document.getElementById('logout-btn');
+    
+    // Onboarding elements
+    const onboardingForm = document.getElementById('onboarding-form');
+    const onboardingProgress = document.getElementById('onboarding-progress');
+    const progressFill = document.getElementById('progress-fill');
+    const prevStepBtn = document.getElementById('prev-step-btn');
+    const nextStepBtn = document.getElementById('next-step-btn');
+    const otherConditionInput = document.getElementById('other-condition-input');
 
     // ===================================================================
     // UTILITY FUNCTIONS
@@ -204,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===================================================================
-    // NAVIGATION & SCREEN RENDERING
+    // SCREEN MANAGEMENT
     // ===================================================================
 
     function showScreen(screenId) {
@@ -212,6 +289,226 @@ document.addEventListener('DOMContentLoaded', () => {
         screens.forEach(screen => screen.classList.add('hidden'));
         document.getElementById(screenId).classList.remove('hidden');
     }
+
+    // Initialize app based on user state
+    function initializeApp() {
+        const userDetails = userManager.getUserDetails();
+        
+        if (!userDetails) {
+            // User not logged in - show login screen
+            showScreen('login-screen');
+            return;
+        }
+        
+        // User is logged in - update header
+        updateUserHeader(userDetails);
+        
+        if (!userManager.isOnboardingCompleted()) {
+            // User needs to complete onboarding
+            showScreen('onboarding-screen');
+            initializeOnboarding();
+        } else {
+            // User is fully set up - show chat
+            showScreen('chat-screen');
+            initializeChat();
+        }
+    }
+
+    // Update user header with name
+    function updateUserHeader(userDetails) {
+        userInfo.textContent = `Welcome back, ${userDetails.name}!`;
+    }
+
+    // ===================================================================
+    // LOGIN FLOW
+    // ===================================================================
+
+    function handleLogin(userDetails) {
+        userManager.saveUserDetails(userDetails);
+        updateUserHeader(userDetails);
+        
+        if (!userManager.isOnboardingCompleted()) {
+            showScreen('onboarding-screen');
+            initializeOnboarding();
+        } else {
+            showScreen('chat-screen');
+            initializeChat();
+        }
+    }
+
+    function handleLogout() {
+        userManager.clearUserData();
+        showScreen('login-screen');
+        appState.messages = [];
+    }
+
+    // ===================================================================
+    // ONBOARDING FLOW
+    // ===================================================================
+
+    function initializeOnboarding() {
+        appState.onboardingStep = 1;
+        updateOnboardingProgress();
+        showOnboardingStep(1);
+    }
+
+    function updateOnboardingProgress() {
+        const progress = (appState.onboardingStep / appState.totalOnboardingSteps) * 100;
+        onboardingProgress.textContent = `${appState.onboardingStep}/${appState.totalOnboardingSteps}`;
+        progressFill.style.width = `${progress}%`;
+    }
+
+    function showOnboardingStep(step) {
+        // Hide all steps
+        for (let i = 1; i <= appState.totalOnboardingSteps; i++) {
+            const stepEl = document.getElementById(`step-${i}`);
+            if (stepEl) stepEl.classList.remove('active');
+        }
+        
+        // Show current step
+        const currentStepEl = document.getElementById(`step-${step}`);
+        if (currentStepEl) currentStepEl.classList.add('active');
+        
+        // Update button states
+        prevStepBtn.style.display = step === 1 ? 'none' : 'block';
+        nextStepBtn.textContent = step === appState.totalOnboardingSteps ? 'Complete' : 'Next';
+        
+        updateOnboardingProgress();
+    }
+
+    function nextOnboardingStep() {
+        if (appState.onboardingStep < appState.totalOnboardingSteps) {
+            appState.onboardingStep++;
+            showOnboardingStep(appState.onboardingStep);
+        } else {
+            completeOnboarding();
+        }
+    }
+
+    function prevOnboardingStep() {
+        if (appState.onboardingStep > 1) {
+            appState.onboardingStep--;
+            showOnboardingStep(appState.onboardingStep);
+        }
+    }
+
+    function collectOnboardingResponses() {
+        const formData = new FormData(onboardingForm);
+        const responses = {};
+        
+        // Collect radio button responses
+        const radioFields = ['fitness_goal', 'plan_duration', 'health_conditions', 'experience_level'];
+        radioFields.forEach(field => {
+            const value = formData.get(field);
+            if (value) responses[field] = value;
+        });
+        
+        // Collect checkbox responses
+        const checkboxFields = ['preferred_activities', 'avoided_activities'];
+        checkboxFields.forEach(field => {
+            const values = formData.getAll(field);
+            if (values.length > 0) responses[field] = values;
+        });
+        
+        // Handle other condition
+        if (responses.health_conditions === 'other') {
+            responses.other_condition = formData.get('other_condition');
+        }
+        
+        return responses;
+    }
+
+    async function completeOnboarding() {
+        const responses = collectOnboardingResponses();
+        
+        // Validate required fields
+        const requiredFields = ['fitness_goal', 'plan_duration', 'experience_level'];
+        const missingFields = requiredFields.filter(field => !responses[field]);
+        
+        if (missingFields.length > 0) {
+            alert('Please complete all required fields before proceeding.');
+            return;
+        }
+        
+        // Save onboarding responses
+        userManager.saveOnboardingResponses(responses);
+        
+        // Generate fitness plan
+        try {
+            const userDetails = userManager.getUserDetails();
+            const fitnessPlan = await api.post('fitness_plans/generate', {
+                userDetails,
+                onboardingResponses: responses
+            });
+            
+            userManager.saveFitnessPlan(fitnessPlan);
+            
+            // Show chat screen
+            showScreen('chat-screen');
+            initializeChat();
+            
+        } catch (error) {
+            console.error('Error generating fitness plan:', error);
+            // Still proceed to chat even if plan generation fails
+            showScreen('chat-screen');
+            initializeChat();
+        }
+    }
+
+    // ===================================================================
+    // CHAT INITIALIZATION
+    // ===================================================================
+
+    function initializeChat() {
+        const userDetails = userManager.getUserDetails();
+        const onboardingResponses = userManager.getOnboardingResponses();
+        const fitnessPlan = userManager.getFitnessPlan();
+        const timeOfDay = userManager.getTimeBasedGreeting();
+        
+        // Generate contextual welcome message
+        let welcomeMessage = generateWelcomeMessage(userDetails, timeOfDay, onboardingResponses, fitnessPlan);
+        
+        appState.messages = [
+            { 
+                role: 'bot', 
+                content: welcomeMessage,
+                ragUsed: false,
+                citations: [],
+                toolsExecuted: []
+            }
+        ];
+        
+        renderChat();
+        updateRagStatus();
+    }
+
+    function generateWelcomeMessage(userDetails, timeOfDay, onboardingResponses, fitnessPlan) {
+        const greetings = {
+            morning: 'Good morning',
+            afternoon: 'Good afternoon', 
+            evening: 'Good evening'
+        };
+        
+        let message = `${greetings[timeOfDay]}, ${userDetails.name}! `;
+        
+        if (timeOfDay === 'morning') {
+            message += "Are you ready for your workout today? How are you feeling?";
+        } else if (timeOfDay === 'afternoon') {
+            message += "How's your day going? Ready for some fitness guidance?";
+        } else {
+            message += "How was your day? Let's plan your fitness routine!";
+        }
+        
+        if (fitnessPlan) {
+            message += `\n\nI have your personalized fitness plan ready based on your ${onboardingResponses.fitness_goal} goal. Would you like me to show you today's workout?`;
+        }
+        
+        return message;
+    }
+
+    // ===================================================================
+    // NAVIGATION & SCREEN RENDERING
+    // ===================================================================
 
     async function navigateTo(tabName) {
         appState.currentTab = tabName;
@@ -297,6 +594,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // EVENT LISTENERS
     // ===================================================================
     
+    // Login form
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(loginForm);
+        const userDetails = {
+            name: formData.get('name'),
+            email: formData.get('email')
+        };
+        handleLogin(userDetails);
+    });
+
+    // Logout button
+    logoutBtn.addEventListener('click', handleLogout);
+
+    // Onboarding navigation
+    nextStepBtn.addEventListener('click', nextOnboardingStep);
+    prevStepBtn.addEventListener('click', prevOnboardingStep);
+
+    // Handle health conditions radio change
+    document.querySelectorAll('input[name="health_conditions"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (e.target.value === 'other') {
+                otherConditionInput.classList.remove('hidden');
+            } else {
+                otherConditionInput.classList.add('hidden');
+            }
+        });
+    });
+    
     // Navigation
     navTabs.forEach(tab => tab.addEventListener('click', () => navigateTo(tab.dataset.tab)));
     
@@ -343,7 +669,20 @@ document.addEventListener('DOMContentLoaded', () => {
         chatWindow.scrollTop = chatWindow.scrollHeight;
 
         try {
-            const data = await api.post('chat', { message: userInput });
+            // Get user context for enhanced chat
+            const userDetails = userManager.getUserDetails();
+            const onboardingResponses = userManager.getOnboardingResponses();
+            const fitnessPlan = userManager.getFitnessPlan();
+            
+            const data = await api.post('chat', { 
+                message: userInput,
+                userContext: {
+                    userDetails,
+                    onboardingResponses,
+                    fitnessPlan,
+                    timeOfDay: userManager.getTimeBasedGreeting()
+                }
+            });
             
             // Remove typing indicator
             typingEl.remove();
@@ -421,6 +760,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================
     
     // Initialize app
-    navigateTo('chat'); // Start on the chat screen
-    renderChat();
+    initializeApp();
 });

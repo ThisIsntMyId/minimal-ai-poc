@@ -167,15 +167,265 @@
             overflow-y: auto;
             min-height: 0;
         }
+
+        /* Onboarding styles */
+        .onboarding-step {
+            display: none;
+        }
+        
+        .onboarding-step.active {
+            display: block;
+        }
+        
+        .progress-bar {
+            height: 4px;
+            background-color: #374151;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #3b82f6;
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-gray-900 flex justify-center items-center h-screen font-sans">
 
     <div id="app" class="app-container w-full max-w-lg bg-gray-800 text-gray-200 rounded-2xl shadow-2xl overflow-hidden">
         
-        <div id="chat-screen" class="screen">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen">
+            <div class="flex-1 flex flex-col justify-center items-center p-8">
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-white mb-2">Welcome to Fitness AI</h1>
+                    <p class="text-gray-400">Your personalized fitness assistant</p>
+                </div>
+                
+                <form id="login-form" class="w-full max-w-sm space-y-6">
+                    <div>
+                        <label for="user-name" class="block text-sm font-medium text-gray-300 mb-2">Your Name</label>
+                        <input 
+                            type="text" 
+                            id="user-name" 
+                            name="name" 
+                            required 
+                            class="w-full bg-gray-700 text-white rounded-lg p-3 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your name"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label for="user-email" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+                        <input 
+                            type="email" 
+                            id="user-email" 
+                            name="email" 
+                            required 
+                            class="w-full bg-gray-700 text-white rounded-lg p-3 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your email"
+                        >
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                        Get Started
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Onboarding Screen -->
+        <div id="onboarding-screen" class="screen hidden">
             <header class="flex-shrink-0 p-6 border-b border-gray-700">
-                <h2 class="text-xl font-bold text-center">Fitness AI Assistant</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">Let's Get to Know You</h2>
+                    <span id="onboarding-progress" class="text-sm text-gray-400">1/6</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill" style="width: 16.67%"></div>
+                </div>
+            </header>
+            
+            <main class="screen-content p-6">
+                <form id="onboarding-form" class="space-y-6">
+                    <!-- Step 1: Fitness Goal -->
+                    <div id="step-1" class="onboarding-step active">
+                        <h3 class="text-lg font-semibold mb-4">What's your primary fitness goal for the next 1-2 weeks?</h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="fitness_goal" value="weight_loss" class="mr-3">
+                                <span>Weight Loss</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="fitness_goal" value="muscle_gain" class="mr-3">
+                                <span>Muscle Gain</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="fitness_goal" value="endurance" class="mr-3">
+                                <span>Improve Endurance</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="fitness_goal" value="flexibility" class="mr-3">
+                                <span>Increase Flexibility</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="fitness_goal" value="general_fitness" class="mr-3">
+                                <span>General Fitness</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Plan Duration -->
+                    <div id="step-2" class="onboarding-step">
+                        <h3 class="text-lg font-semibold mb-4">How long would you like your fitness plan to be?</h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="plan_duration" value="1_week" class="mr-3">
+                                <span>1 Week</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="plan_duration" value="2_weeks" class="mr-3">
+                                <span>2 Weeks</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="plan_duration" value="1_month" class="mr-3">
+                                <span>1 Month</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="plan_duration" value="3_months" class="mr-3">
+                                <span>3 Months</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Preferred Activities -->
+                    <div id="step-3" class="onboarding-step">
+                        <h3 class="text-lg font-semibold mb-4">What types of exercises do you prefer?</h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="checkbox" name="preferred_activities" value="strength_training" class="mr-3">
+                                <span>Strength Training</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="checkbox" name="preferred_activities" value="cardio" class="mr-3">
+                                <span>Cardio</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="checkbox" name="preferred_activities" value="yoga" class="mr-3">
+                                <span>Yoga/Stretching</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="checkbox" name="preferred_activities" value="bodyweight" class="mr-3">
+                                <span>Bodyweight Exercises</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="checkbox" name="preferred_activities" value="sports" class="mr-3">
+                                <span>Sports/Recreational</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Avoided Activities -->
+                    <div id="step-4" class="onboarding-step">
+                        <h3 class="text-lg font-semibold mb-4">What types of exercises would you prefer to avoid?</h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="checkbox" name="avoided_activities" value="high_impact" class="mr-3">
+                                <span>High Impact (Running, Jumping)</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="checkbox" name="avoided_activities" value="heavy_lifting" class="mr-3">
+                                <span>Heavy Lifting</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="checkbox" name="avoided_activities" value="complex_movements" class="mr-3">
+                                <span>Complex Movements</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="checkbox" name="avoided_activities" value="long_duration" class="mr-3">
+                                <span>Long Duration Sessions</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="checkbox" name="avoided_activities" value="none" class="mr-3">
+                                <span>No restrictions</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Step 5: Health Conditions -->
+                    <div id="step-5" class="onboarding-step">
+                        <h3 class="text-lg font-semibold mb-4">Do you have any health conditions or injuries I should be aware of?</h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="health_conditions" value="none" class="mr-3">
+                                <span>No health conditions</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="health_conditions" value="back_pain" class="mr-3">
+                                <span>Back Pain</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="health_conditions" value="knee_problems" class="mr-3">
+                                <span>Knee Problems</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="health_conditions" value="heart_condition" class="mr-3">
+                                <span>Heart Condition</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="health_conditions" value="other" class="mr-3">
+                                <span>Other (please specify)</span>
+                            </label>
+                        </div>
+                        <div id="other-condition-input" class="mt-4 hidden">
+                            <label for="other-condition" class="block text-sm font-medium text-gray-300 mb-2">Please specify:</label>
+                            <input 
+                                type="text" 
+                                id="other-condition" 
+                                name="other_condition" 
+                                class="w-full bg-gray-700 text-white rounded-lg p-3 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Describe your condition"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Step 6: Experience Level -->
+                    <div id="step-6" class="onboarding-step">
+                        <h3 class="text-lg font-semibold mb-4">What's your current fitness experience level?</h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="experience_level" value="beginner" class="mr-3">
+                                <span>Beginner (0-6 months)</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="experience_level" value="intermediate" class="mr-3">
+                                <span>Intermediate (6 months - 2 years)</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600">
+                                <input type="radio" name="experience_level" value="advanced" class="mr-3">
+                                <span>Advanced (2+ years)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-4">
+                        <button type="button" id="prev-step-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Previous</button>
+                        <button type="button" id="next-step-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Next</button>
+                    </div>
+                </form>
+            </main>
+        </div>
+        
+        <div id="chat-screen" class="screen hidden">
+            <header class="flex-shrink-0 p-6 border-b border-gray-700">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold">Fitness AI Assistant</h2>
+                        <div id="user-info" class="text-sm text-gray-400 mt-1"></div>
+                    </div>
+                    <button id="logout-btn" class="text-gray-400 hover:text-white text-sm">Logout</button>
+                </div>
                 <div id="rag-status" class="text-xs text-center text-gray-400 mt-2"></div>
             </header>
             <main id="chat-window" class="chat-window p-6 space-y-4">

@@ -363,6 +363,8 @@ const tools = [
  */
 router.post('/', async (req, res) => {
     const userMessage = req.body.message;
+    const userContext = req.body.userContext || {};
+    
     if (!userMessage) {
         return res.status(400).json({ error: 'Message is required' });
     }
@@ -396,12 +398,44 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // Create system prompt with or without RAG context
-        let systemPrompt = 'You are a helpful medical assistant. You can help create appointments, prescriptions, fitness plans, and meal plans for patients. Always ask for required information before creating any plans.';
+        // Create system prompt with user context and RAG
+        let systemPrompt = 'You are a personalized fitness AI assistant. You help users with their fitness goals, provide workout guidance, and answer health-related questions.';
+        
+        // Add user context if available
+        if (userContext.userDetails) {
+            systemPrompt += `\n\nUser Information:\n- Name: ${userContext.userDetails.name}\n- Email: ${userContext.userDetails.email}`;
+        }
+        
+        if (userContext.onboardingResponses) {
+            const responses = userContext.onboardingResponses;
+            systemPrompt += `\n\nUser Fitness Profile:\n- Goal: ${responses.fitness_goal}\n- Experience Level: ${responses.experience_level}\n- Plan Duration: ${responses.plan_duration}`;
+            
+            if (responses.health_conditions && responses.health_conditions !== 'none') {
+                systemPrompt += `\n- Health Considerations: ${responses.health_conditions}`;
+            }
+            
+            if (responses.preferred_activities && responses.preferred_activities.length > 0) {
+                systemPrompt += `\n- Preferred Activities: ${responses.preferred_activities.join(', ')}`;
+            }
+            
+            if (responses.avoided_activities && responses.avoided_activities.length > 0) {
+                systemPrompt += `\n- Activities to Avoid: ${responses.avoided_activities.join(', ')}`;
+            }
+        }
+        
+        if (userContext.fitnessPlan) {
+            systemPrompt += `\n\nUser has a personalized fitness plan available. You can reference their workouts and recommendations when providing guidance.`;
+        }
+        
+        if (userContext.timeOfDay) {
+            systemPrompt += `\n\nCurrent time context: ${userContext.timeOfDay}. Adjust your greetings and recommendations accordingly.`;
+        }
         
         if (ragContext) {
             systemPrompt += `\n\nYou have access to fitness and health knowledge from documents. Use the following context to provide accurate, evidence-based answers:\n\n${ragContext}\n\nWhen providing fitness or health advice, cite the relevant document sources when appropriate.`;
         }
+        
+        systemPrompt += '\n\nYou can help create appointments, prescriptions, fitness plans, and meal plans for patients. Always ask for required information before creating any plans.';
 
         // Convert chat history to OpenAI format
         const messages = [
